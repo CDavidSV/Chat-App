@@ -1,12 +1,25 @@
 package main
 
 import (
-    "net/http"
-    "chat-app-back/src/routes"
+	routes "chat-app-back/src/routes/api"
+	"log"
+
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
-func main() {
-    http.HandleFunc("/test", routes.TestHandler)
+const addr string = "localhost:8080"
 
-    http.ListenAndServe(":8080", nil)
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	// Setup routes
+	router := gin.Default()
+	api := router.Group("/api")
+	{
+		routes.MessageRoutes(api)
+	}
+	router.Run(addr)
 }
