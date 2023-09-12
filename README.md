@@ -1,3 +1,3 @@
 # Chat-App
 
-Simple messaging and video chat app
+Simple messaging chat app
