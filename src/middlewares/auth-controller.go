@@ -14,7 +14,7 @@ func AuthenticateAccessToken() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Authorization header required"})
 			c.Abort()
 			return
 		}
@@ -35,7 +35,7 @@ func AuthenticateAccessToken() gin.HandlerFunc {
 
 		// Check if token was parsed
 		if err != nil || !parsedToken.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid token"})
 			c.Abort()
 			return
 		}
@@ -43,7 +43,7 @@ func AuthenticateAccessToken() gin.HandlerFunc {
 		// Get uid from claims
 		uid := (*claims)["uid"].(string)
 		if uid == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid token"})
 			c.Abort()
 			return
 		}

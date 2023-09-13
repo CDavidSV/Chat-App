@@ -5,6 +5,7 @@ import (
 	apiRoute "chat-app-back/src/routes/api"
 	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -19,6 +20,13 @@ func main() {
 
 	// Setup routes
 	router := gin.Default()
+
+	// middleware
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	config.AllowMethods = []string{"GET", "POST"}
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	router.Use(cors.New(config))
 
 	// Api routes
 	api := router.Group("/api")
