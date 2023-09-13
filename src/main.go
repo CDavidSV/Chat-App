@@ -20,6 +20,7 @@ func main() {
 	api := router.Group("/api")
 	{
 		routes.MessageRoutes(api)
+		routes.ProfileRoutes(api)
 	}
 	router.Run(addr)
 }
