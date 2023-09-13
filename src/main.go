@@ -23,12 +23,8 @@ func main() {
 	// Api routes
 	api := router.Group("/api")
 	{
-<<<<<<< HEAD
-		routes.MessageRoutes(api)
-		routes.ProfileRoutes(api)
-=======
 		apiRoute.MessageRoutes(api)
->>>>>>> 562f2cdf0a08cf8d3735ef2ffe2bf31f6dba763d
+		apiRoute.ProfileRoutes(api)
 	}
 
 	// Authentication routes
