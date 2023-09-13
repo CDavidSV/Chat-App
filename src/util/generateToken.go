@@ -11,9 +11,9 @@ func GenerateToken(uid string, expirationDelta int64, refresh bool) (string, err
 	// Get toke secret from env file
 	var tokenSecret string
 	if refresh {
-		tokenSecret = os.Getenv("ACCESS_TOKEN_KEY")
-	} else {
 		tokenSecret = os.Getenv("REFRESH_TOKEN_KEY")
+	} else {
+		tokenSecret = os.Getenv("ACCESS_TOKEN_KEY")
 	}
 
 	// Generate the new token
