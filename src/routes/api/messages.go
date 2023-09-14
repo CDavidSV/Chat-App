@@ -16,7 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type MessageContent struct {
+type GetMessageContent struct {
 	Content   string `json:"content"`
 	ChannelId string `json:"channel_id"`
 }
@@ -26,12 +26,20 @@ type ChannelCreate struct {
 	RecepientID string `json:"recepient_id"`
 }
 
+type MessageContent struct {
+	ID        string             `json:"id"`
+	SenderID  string             `json:"sender_id"`
+	Me        bool               `json:"me"`
+	CreatedAt primitive.DateTime `json:"created_at"`
+	Content   string             `json:"content"`
+}
+
 var validate = validator.New()
 
 func HandleSendMessage(c *gin.Context) {
 	db := config.MongoClient()
 
-	var messageContent MessageContent
+	var messageContent GetMessageContent
 
 	// Validate json structure
 	err := c.BindJSON(&messageContent)
@@ -153,8 +161,7 @@ func HandleCreateChannel(c *gin.Context) {
 		Name:                nil,
 		OwnerID:             nil,
 		GroupProfilePicture: nil,
-		CreatedAt:           primitive.NewDateTimeFromTime(time.Now()),
-		LastMessageID:       primitive.NewDateTimeFromTime(time.Now())}
+		CreatedAt:           primitive.NewDateTimeFromTime(time.Now())}
 
 	_, err = db.Database("Chat-App").Collection("channels").InsertOne(c, channel)
 	if err != nil {
@@ -165,10 +172,82 @@ func HandleCreateChannel(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "success", "message": "Channel created successfully", "channel_data": channel})
 }
 
+func HandleGetMessages(c *gin.Context) {
+	db := config.MongoClient()
+
+	channel_id := c.Query("channel_id")
+	if channel_id == "" {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid request"})
+		return
+	}
+
+	id, err := primitive.ObjectIDFromHex(channel_id)
+	if err != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid channel id"})
+		return
+	}
+
+	// Get uid
+	uid := util.GetUid(c)
+
+	var channel models.Channel
+	err = db.Database("Chat-App").Collection("channels").FindOne(c, bson.D{{Key: "$and", Value: []bson.M{{"_id": id}, {"members": uid}}}}).Decode(&channel)
+	if err != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Channel does not exist"})
+		return
+	}
+
+	// Get all messages in the channel
+	cursor, err := db.Database("Chat-App").Collection("messages").Find(c, bson.D{{Key: "channel_id", Value: channel_id}})
+	if err != nil {
+		c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch messages"})
+		return
+	}
+
+	var messages []MessageContent
+
+	for cursor.Next(c) {
+		var message models.Message
+		cursor.Decode(&message)
+
+		messageContent := MessageContent{
+			ID:        message.ID.Hex(),
+			SenderID:  message.SenderID,
+			Me:        message.SenderID == uid,
+			CreatedAt: message.CreatedAt,
+			Content:   message.Content}
+
+		messages = append(messages, messageContent)
+	}
+
+	c.JSON(200, gin.H{"status": "success", "channel_id": channel.ID.Hex(), "messages": messages})
+}
+
+func HandleGetChannels(c *gin.Context) {
+	// db := config.MongoClient()
+
+	// channel_id := c.Query("channel_id")
+	// if channel_id == "" {
+	// 	c.JSON(400, gin.H{"status": "error", "message": "Invalid request"})
+	// 	return
+	// }
+
+	// id, err := primitive.ObjectIDFromHex(channel_id)
+	// if err != nil {
+	// 	c.JSON(400, gin.H{"status": "error", "message": "Invalid channel id"})
+	// 	return
+	// }
+
+	// // Get uid
+	// uid := util.GetUid(c)
+}
+
 func MessageRoutes(route *gin.RouterGroup) {
 	messagesGroup := route.Group("/")
 	{
 		messagesGroup.POST("send_message", middlewares.AuthenticateAccessToken(), HandleSendMessage)
 		messagesGroup.POST("create_channel", middlewares.AuthenticateAccessToken(), HandleCreateChannel)
+		messagesGroup.GET("get_messages", middlewares.AuthenticateAccessToken(), HandleGetMessages)
+		messagesGroup.GET("get_channels", middlewares.AuthenticateAccessToken(), HandleGetChannels)
 	}
 }
