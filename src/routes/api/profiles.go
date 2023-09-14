@@ -20,10 +20,10 @@ type ChangeStatus struct {
 }
 
 type UserProfileResponse struct {
-	ID             string `json:"id"`
-	Username       string `json:"username"`
-	CustomStatus   string `json:"custom_status"`
-	ProfilePicture string `json:"profile_picture"`
+	ID             string  `json:"id"`
+	Username       string  `json:"username"`
+	CustomStatus   *string `json:"custom_status"`
+	ProfilePicture *string `json:"profile_picture"`
 }
 
 func HandleChangeUsername(c *gin.Context) {
