@@ -206,11 +206,10 @@ func HandleRegister(c *gin.Context) {
 
 	// Create user
 	newUser, err := db.Database("Chat-App").Collection("users").InsertOne(c, models.User{
-		ID:         primitive.NewObjectID(),
-		FirebaseID: token.UID,
-		Email:      token.Claims["email"].(string),
-		Username:   accountCreation.Username,
-		Status:     "offline", CustomStatus: "",
+		ID:             primitive.NewObjectID(),
+		FirebaseID:     token.UID,
+		Email:          token.Claims["email"].(string),
+		Username:       accountCreation.Username,
 		ProfilePicture: token.Claims["picture"].(string)})
 	if err != nil {
 		c.JSON(500, gin.H{"status": "error", "message": "Error creating user"})

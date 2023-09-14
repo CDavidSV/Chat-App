@@ -7,7 +7,6 @@ type User struct {
 	FirebaseID     string             `bson:"firebase_id,omitempty"`
 	Email          string             `bson:"email,omitempty"`
 	Username       string             `bson:"username,omitempty"`
-	Status         string             `bson:"status,omitempty"`
 	CustomStatus   string             `bson:"custom_status,omitempty"`
 	ProfilePicture string             `bson:"profile_picture,omitempty"`
 }
