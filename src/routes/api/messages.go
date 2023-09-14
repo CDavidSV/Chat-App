@@ -11,7 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type GetMessageContent struct {
@@ -24,12 +24,19 @@ type ChannelCreate struct {
 	RecepientID string `json:"recepient_id"`
 }
 
+type MessageUser struct {
+	ID             string `json:"id"`
+	Username       string `json:"username"`
+	ProfilePicture string `json:"profile_picture"`
+}
+
 type MessageContent struct {
 	ID        string             `json:"id"`
 	SenderID  string             `json:"sender_id"`
 	Me        bool               `json:"me"`
 	CreatedAt primitive.DateTime `json:"created_at"`
 	Content   string             `json:"content"`
+	User      MessageUser        `json:"user"`
 }
 
 var validate = validator.New()
@@ -75,8 +82,22 @@ func HandleGetMessages(c *gin.Context) {
 	// Get uid
 	uid := util.GetUid(c)
 
+	// Create pipeline to fetch user data for messages
+	pipeline := mongo.Pipeline{
+		{{Key: "$limit", Value: 100}},
+		{{Key: "$addFields", Value: bson.M{"sender_id_object": bson.M{"$toObjectId": "$sender_id"}}}},
+		bson.D{{
+			Key: "$lookup", Value: bson.M{
+				"from":         "users",            // The other collection
+				"localField":   "sender_id_object", // Name of the field in messages collection
+				"foreignField": "_id",              // Name of the field in users collection
+				"as":           "user",             // Output array field
+			},
+		}},
+	}
+
 	// Get all messages in the channel
-	cursor, err := db.Database("Chat-App").Collection("messages").Find(c, bson.M{}, options.Find().SetLimit(100))
+	cursor, err := db.Database("Chat-App").Collection("messages").Aggregate(c, pipeline)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch messages"})
 		return
@@ -85,15 +106,24 @@ func HandleGetMessages(c *gin.Context) {
 	var messages []MessageContent
 
 	for cursor.Next(c) {
-		var message models.Message
-		cursor.Decode(&message)
+		var raw bson.M
+		if err := cursor.Decode(&raw); err != nil {
+			c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch messages"})
+			return
+		}
 
 		messageContent := MessageContent{
-			ID:        message.ID.Hex(),
-			SenderID:  message.SenderID,
-			Me:        message.SenderID == uid,
-			CreatedAt: message.CreatedAt,
-			Content:   message.Content}
+			ID:        raw["_id"].(primitive.ObjectID).Hex(),
+			SenderID:  raw["sender_id"].(string),
+			Me:        raw["sender_id"].(string) == uid,
+			CreatedAt: raw["created_at"].(primitive.DateTime),
+			Content:   raw["content"].(string),
+			User: MessageUser{
+				ID:             raw["user"].(primitive.A)[0].(bson.M)["_id"].(primitive.ObjectID).Hex(),
+				Username:       raw["user"].(primitive.A)[0].(bson.M)["username"].(string),
+				ProfilePicture: raw["user"].(primitive.A)[0].(bson.M)["profile_picture"].(string),
+			},
+		}
 
 		messages = append(messages, messageContent)
 	}

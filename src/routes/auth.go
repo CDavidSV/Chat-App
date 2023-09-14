@@ -205,12 +205,15 @@ func HandleRegister(c *gin.Context) {
 	}
 
 	// Create user
+	profilePicture := token.Claims["picture"].(string)
 	newUser, err := db.Database("Chat-App").Collection("users").InsertOne(c, models.User{
 		ID:             primitive.NewObjectID(),
 		FirebaseID:     token.UID,
 		Email:          token.Claims["email"].(string),
 		Username:       accountCreation.Username,
-		ProfilePicture: token.Claims["picture"].(string)})
+		ProfilePicture: &profilePicture,
+		Status:         "online",
+		CustomStatus:   nil})
 	if err != nil {
 		c.JSON(500, gin.H{"status": "error", "message": "Error creating user"})
 		return
