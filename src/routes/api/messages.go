@@ -5,6 +5,7 @@ import (
 	"chat-app-back/src/middlewares"
 	"chat-app-back/src/models"
 	"chat-app-back/src/util"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -43,6 +44,7 @@ var validate = validator.New()
 
 func HandleSendMessage(c *gin.Context) {
 	db := config.MongoClient()
+	pusherClient := config.PusherInit()
 
 	var messageContent GetMessageContent
 
@@ -73,7 +75,39 @@ func HandleSendMessage(c *gin.Context) {
 		return
 	}
 
+	objectID, err := primitive.ObjectIDFromHex(uid)
+	if err != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid user ID"})
+		return
+	}
+
 	c.JSON(200, gin.H{"status": "success", "message": "Message sent successfully", "at": message.CreatedAt})
+
+	// Fetch User data
+	var user models.User
+	filter := bson.M{"_id": objectID}
+	err = db.Database("Chat-App").Collection("users").FindOne(c, filter).Decode(&user)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// Trigger pusher event
+	data := map[string]any{
+		"id":         message.ID.Hex(),
+		"sender_id":  message.SenderID,
+		"me":         false,
+		"created_at": message.CreatedAt,
+		"content":    message.Content,
+		"user": map[string]string{
+			"id":              uid,
+			"username":        user.Username,
+			"profile_picture": *user.ProfilePicture,
+		},
+	}
+	err = pusherClient.Trigger("super-chat-channel", "main", data)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
 
 func HandleGetMessages(c *gin.Context) {
