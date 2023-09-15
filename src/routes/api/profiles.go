@@ -129,11 +129,54 @@ func HandleGetUserProfile(c *gin.Context) {
 	// Return the user profile as a JSON response
 	c.JSON(200, gin.H{"status": "success", "user_profile": userProfile})
 }
+
+func HandleGetOnlineUsers(c *gin.Context) {
+	db := config.MongoClient()
+
+	// Find all users with a status of "online"
+	filter := bson.M{"status": "online"}
+	cursor, err := db.Database("Chat-App").Collection("users").Find(c, filter)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch online users"})
+		return
+	}
+	defer cursor.Close(c)
+
+	// Create a slice of UserProfileResponse objects
+	var userProfiles []UserProfileResponse
+	for cursor.Next(c) {
+		var user models.User
+		err := cursor.Decode(&user)
+		if err != nil {
+			c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch online users"})
+			return
+		}
+
+		userProfile := UserProfileResponse{
+			ID:             user.ID.Hex(),
+			Username:       user.Username,
+			CustomStatus:   user.CustomStatus,
+			ProfilePicture: user.ProfilePicture,
+		}
+
+		userProfiles = append(userProfiles, userProfile)
+	}
+
+	if err := cursor.Err(); err != nil {
+		c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch online users"})
+		return
+	}
+
+	// Return the user profiles as a JSON response
+	c.JSON(200, gin.H{"status": "success", "online_users": userProfiles})
+}
+
 func ProfileRoutes(route *gin.RouterGroup) {
 	profileGroup := route.Group("/")
 	{
-		profileGroup.POST("edit_username", middlewares.AuthenticateAccessToken(), HandleChangeUsername)
-		profileGroup.POST("change_status", middlewares.AuthenticateAccessToken(), HandleChangeStatus)
-		profileGroup.GET("user_profile/:user_id", HandleGetUserProfile)
+		profileGroup.POST("change_username", middlewares.AuthenticateAccessToken(), HandleChangeUsername)
+		profileGroup.POST("change_custom_status", middlewares.AuthenticateAccessToken(), HandleChangeStatus)
+		profileGroup.GET("user_profile/:user_id", middlewares.AuthenticateAccessToken(), HandleGetUserProfile)
+		profileGroup.GET("get_online_users", middlewares.AuthenticateAccessToken(), HandleGetOnlineUsers)
 	}
 }
