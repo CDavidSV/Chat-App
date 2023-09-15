@@ -130,6 +130,38 @@ func HandleGetUserProfile(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "success", "user_profile": userProfile})
 }
 
+func HandleGetOwnProfile(c *gin.Context) {
+	db := config.MongoClient()
+
+	// Get the user ID from the authentication token
+	uid := util.GetUid(c)
+	objectID, err := primitive.ObjectIDFromHex(uid)
+	if err != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid user ID"})
+		return
+	}
+
+	// Find the user in the database
+	var user models.User
+	filter := bson.M{"_id": objectID}
+	err = db.Database("Chat-App").Collection("users").FindOne(c, filter).Decode(&user)
+	if err != nil {
+		c.JSON(404, gin.H{"status": "error", "message": "User not found"})
+		return
+	}
+
+	// Create a UserProfileResponse object
+	userProfile := UserProfileResponse{
+		ID:             user.ID.Hex(),
+		Username:       user.Username,
+		CustomStatus:   user.CustomStatus,
+		ProfilePicture: user.ProfilePicture,
+	}
+
+	// Return the user profile as a JSON response
+	c.JSON(200, gin.H{"status": "success", "user_profile": userProfile})
+}
+
 func HandleGetOnlineUsers(c *gin.Context) {
 	db := config.MongoClient()
 
@@ -177,6 +209,7 @@ func ProfileRoutes(route *gin.RouterGroup) {
 		profileGroup.POST("change_username", middlewares.AuthenticateAccessToken(), HandleChangeUsername)
 		profileGroup.POST("change_custom_status", middlewares.AuthenticateAccessToken(), HandleChangeStatus)
 		profileGroup.GET("user_profile/:user_id", middlewares.AuthenticateAccessToken(), HandleGetUserProfile)
+		profileGroup.GET("user_profile", middlewares.AuthenticateAccessToken(), HandleGetOwnProfile)
 		profileGroup.GET("get_online_users", middlewares.AuthenticateAccessToken(), HandleGetOnlineUsers)
 	}
 }
