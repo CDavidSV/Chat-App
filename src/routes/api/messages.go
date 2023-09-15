@@ -117,7 +117,8 @@ func HandleGetMessages(c *gin.Context) {
 
 	// Create pipeline to fetch user data for messages
 	pipeline := mongo.Pipeline{
-		{{Key: "$limit", Value: 100}},
+		bson.D{{Key: "$sort", Value: bson.M{"created_at": -1}}},
+		bson.D{{Key: "$limit", Value: 100}},
 		{{Key: "$addFields", Value: bson.M{"sender_id_object": bson.M{"$toObjectId": "$sender_id"}}}},
 		bson.D{{
 			Key: "$lookup", Value: bson.M{
@@ -158,6 +159,11 @@ func HandleGetMessages(c *gin.Context) {
 		}
 
 		messages = append(messages, messageContent)
+	}
+
+	// Reverse the messages slice
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
 	}
 
 	c.JSON(200, gin.H{"status": "success", "messages": messages})
