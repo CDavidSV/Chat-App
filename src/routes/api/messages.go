@@ -62,6 +62,12 @@ func HandleSendMessage(c *gin.Context) {
 	// Get the sender's uid and attempt to send the message.
 	uid := util.GetUid(c)
 
+	objectID, err := primitive.ObjectIDFromHex(uid)
+	if err != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid user ID"})
+		return
+	}
+
 	message := models.Message{
 		ID:        primitive.NewObjectID(),
 		SenderID:  uid,
@@ -74,14 +80,6 @@ func HandleSendMessage(c *gin.Context) {
 		return
 	}
 
-	objectID, err := primitive.ObjectIDFromHex(uid)
-	if err != nil {
-		c.JSON(400, gin.H{"status": "error", "message": "Invalid user ID"})
-		return
-	}
-
-	c.JSON(200, gin.H{"status": "success", "message": "Message sent successfully", "at": message.CreatedAt})
-
 	// Fetch User data
 	var user models.User
 	filter := bson.M{"_id": objectID}
@@ -90,26 +88,30 @@ func HandleSendMessage(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
-	// Trigger pusher event
-	data := map[string]any{
-		"id":         message.ID.Hex(),
-		"sender_id":  message.SenderID,
-		"me":         false,
-		"created_at": message.CreatedAt,
-		"content":    message.Content,
-		"user": map[string]string{
-			"id":              uid,
-			"username":        user.Username,
-			"profile_picture": *user.ProfilePicture,
-		},
-	}
-	err = pusherClient.Trigger("super-chat-channel", "main", data)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+	c.JSON(200, gin.H{"status": "success", "message": "Message sent successfully", "at": message.CreatedAt})
 
-	// Set offline status after 15 minutes
-	util.SetOfflineAfterDuration(uid, 15*time.Minute, c)
+	go func() {
+		// Trigger pusher event
+		data := map[string]any{
+			"id":         message.ID.Hex(),
+			"sender_id":  message.SenderID,
+			"me":         false,
+			"created_at": message.CreatedAt,
+			"content":    message.Content,
+			"user": map[string]string{
+				"id":              uid,
+				"username":        user.Username,
+				"profile_picture": *user.ProfilePicture,
+			},
+		}
+		err = pusherClient.Trigger("super-chat-channel", "main", data)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		// Set offline status after 15 minutes
+		util.SetOfflineAfterDuration(uid, 15*time.Minute, c)
+	}()
 }
 
 func HandleGetMessages(c *gin.Context) {
