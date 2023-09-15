@@ -34,7 +34,6 @@ type MessageUser struct {
 type MessageContent struct {
 	ID        string             `json:"id"`
 	SenderID  string             `json:"sender_id"`
-	Me        bool               `json:"me"`
 	CreatedAt primitive.DateTime `json:"created_at"`
 	Content   string             `json:"content"`
 	User      MessageUser        `json:"user"`
@@ -116,9 +115,6 @@ func HandleSendMessage(c *gin.Context) {
 func HandleGetMessages(c *gin.Context) {
 	db := config.MongoClient()
 
-	// Get uid
-	uid := util.GetUid(c)
-
 	// Create pipeline to fetch user data for messages
 	pipeline := mongo.Pipeline{
 		{{Key: "$limit", Value: 100}},
@@ -152,7 +148,6 @@ func HandleGetMessages(c *gin.Context) {
 		messageContent := MessageContent{
 			ID:        raw["_id"].(primitive.ObjectID).Hex(),
 			SenderID:  raw["sender_id"].(string),
-			Me:        raw["sender_id"].(string) == uid,
 			CreatedAt: raw["created_at"].(primitive.DateTime),
 			Content:   raw["content"].(string),
 			User: MessageUser{
