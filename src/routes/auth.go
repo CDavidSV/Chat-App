@@ -142,9 +142,9 @@ func HandleLogin(c *gin.Context) {
 
 	// Get user data
 	var result models.User
-	err = db.Database("Chat-App").Collection("users").FindOne(c, bson.D{{Key: "email", Value: token.Claims["email"]}}).Decode(&result)
-
+	err = db.Database("Chat-App").Collection("users").FindOneAndUpdate(c, bson.D{{Key: "email", Value: token.Claims["email"]}}, bson.M{"$set": bson.M{"profile_picture": token.Claims["picture"]}}).Decode(&result)
 	if err != nil {
+		fmt.Println(err)
 		c.JSON(500, gin.H{"status": "error", "message": "User does not exist"})
 		return
 	}
