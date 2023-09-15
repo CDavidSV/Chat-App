@@ -68,6 +68,15 @@ func HandleSendMessage(c *gin.Context) {
 		return
 	}
 
+	// Fetch User data
+	var user models.User
+	filter := bson.M{"_id": objectID}
+	err = db.Database("Chat-App").Collection("users").FindOne(c, filter).Decode(&user)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "error", "message": "Failed to send message"})
+		return
+	}
+
 	message := models.Message{
 		ID:        primitive.NewObjectID(),
 		SenderID:  uid,
@@ -78,14 +87,6 @@ func HandleSendMessage(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, gin.H{"status": "error", "message": "Failed to send message"})
 		return
-	}
-
-	// Fetch User data
-	var user models.User
-	filter := bson.M{"_id": objectID}
-	err = db.Database("Chat-App").Collection("users").FindOne(c, filter).Decode(&user)
-	if err != nil {
-		fmt.Println(err.Error())
 	}
 
 	c.JSON(200, gin.H{"status": "success", "message": "Message sent successfully", "at": message.CreatedAt})
