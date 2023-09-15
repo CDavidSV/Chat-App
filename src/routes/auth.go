@@ -162,6 +162,9 @@ func HandleLogin(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "success", "message": "User logged in successfully", "access_token": accessToken, "refresh_token": refreshToken})
+
+	// Set offline status after 15 minutes
+	util.SetOfflineAfterDuration(result.ID.Hex(), 15*time.Minute, c)
 }
 
 func HandleRegister(c *gin.Context) {
@@ -233,6 +236,9 @@ func HandleRegister(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "success", "message": "User created successfully", "access_token": accessToken, "refresh_token": refreshToken})
+
+	// Set offline status after 15 minutes
+	util.SetOfflineAfterDuration(newUser.InsertedID.(primitive.ObjectID).Hex(), 15*time.Minute, c)
 }
 
 func HandleRevokeToken(c *gin.Context) {
@@ -268,6 +274,9 @@ func HandleRevokeToken(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "success", "message": "Token revoked successfully"})
+
+	// Set offline status
+	util.SetOfflineAfterDuration(uid, 30*time.Second, c)
 }
 
 func HandleRefreshToken(c *gin.Context) {
@@ -316,6 +325,9 @@ func HandleRefreshToken(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "success", "message": "Token refreshed successfully", "access_token": accessToken, "refresh_token": newRefreshToken})
+
+	// Set offline status after 15 minutes
+	util.SetOfflineAfterDuration(uid, 15*time.Minute, c)
 }
 
 func AuthenticationRoutes(route *gin.RouterGroup) {

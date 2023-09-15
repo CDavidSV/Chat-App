@@ -108,6 +108,9 @@ func HandleSendMessage(c *gin.Context) {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
+	// Set offline status after 15 minutes
+	util.SetOfflineAfterDuration(uid, 15*time.Minute, c)
 }
 
 func HandleGetMessages(c *gin.Context) {
